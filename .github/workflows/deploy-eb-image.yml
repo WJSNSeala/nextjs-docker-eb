@@ -86,6 +86,6 @@ jobs:
           }' > Dockerrun.aws.json
 
           # Deploy to Elastic Beanstalk
-          eb init $EB_APP_NAME --region ap-northeast-2
+          eb init $EB_APP_NAME --region ap-northeast-2 --platform "Docker" --source codecommit=false
           eb use $EB_ENV_NAME
           eb deploy
