@@ -52,41 +52,29 @@ jobs:
           REPOSITORY_URI=${{secrets.AWS_ECR_REPOSITORY}}
           docker push ${{secrets.AWS_ECR_REPOSITORY}}:$IMAGE_TAG
 
-      # Step 7: Check if EB CLI is installed and install if missing
-      - name: Check for EB CLI
+      - name: Get current time
+        uses: josStorer/get-current-time@v2.1.1
+        id: current-time
+        with:
+          format: YYYY-MM-DD-HH-mm-ss
+          utcOffset: "+09:00"
+
+      - name: Generate deployment package
         run: |
-          if ! command -v eb &> /dev/null
-          then
-            echo "EB CLI not found, installing..."
-            pip install awsebcli
-          else
-            echo "EB CLI is already installed"
-          fi
+          mkdir -p deploy
+          cp Dockerrun.aws.json deploy/Dockerrun.aws.json 
+          cp -r .platform deploy/.platform
 
-      # Step 8: Deploy to Elastic Beanstalk
-      - name: Deploy to Elastic Beanstalk
-        run: |
-          EB_APP_NAME=nextjs-docker-env  # Replace with your Elastic Beanstalk app name
-          EB_ENV_NAME=nextjs-docker-env-dev  # Replace with your Elastic Beanstalk environment name
-          REPOSITORY_URI=${{secrets.AWS_ECR_REPOSITORY}}
-          IMAGE_TAG=latest
+          cd deploy && zip -r deploy.zip .
 
-          # Create Dockerrun.aws.json file
-          echo '{
-            "AWSEBDockerrunVersion": "1",
-            "Image": {
-              "Name": "'$REPOSITORY_URI':'$IMAGE_TAG'",
-              "Update": "true"
-            },
-            "Ports": [
-              {
-                "ContainerPort": "3000",
-                "HostPort": "3000"
-              }
-            ]
-          }' > Dockerrun.aws.json
-
-          # Deploy to Elastic Beanstalk
-          eb init $EB_APP_NAME --region ap-northeast-2 --platform "Docker"
-          eb use $EB_ENV_NAME
-          eb deploy
+      - name: EB에 배포하기
+        uses: einaregilsson/beanstalk-deploy@v20
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: nextjs-docker-env
+          environment_name: nextjs-docker-env-dev
+          version_label: nextjs-docker-env-dev-${{steps.current-time.outputs.formattedTime}}
+          region: ap-northeast-2
+          deployment_package: deploy/deploy.zip
+          wait_for_environment_recovery: 600

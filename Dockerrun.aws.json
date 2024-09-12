@@ -1,0 +1,13 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "269018914230.dkr.ecr.ap-northeast-2.amazonaws.com/nextjs-docker-env:latest",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": "3000",
+      "HostPort": "3000"
+    }
+  ]
+}
