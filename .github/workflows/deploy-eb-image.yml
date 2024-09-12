@@ -51,3 +51,41 @@ jobs:
           IMAGE_TAG=latest
           REPOSITORY_URI=${{secrets.AWS_ECR_REPOSITORY}}
           docker push ${{secrets.AWS_ECR_REPOSITORY}}:$IMAGE_TAG
+
+      # Step 7: Check if EB CLI is installed and install if missing
+      - name: Check for EB CLI
+        run: |
+          if ! command -v eb &> /dev/null
+          then
+            echo "EB CLI not found, installing..."
+            pip install awsebcli
+          else
+            echo "EB CLI is already installed"
+          fi
+
+      # Step 8: Deploy to Elastic Beanstalk
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          EB_APP_NAME=nextjs-docker-env  # Replace with your Elastic Beanstalk app name
+          EB_ENV_NAME=nextjs-docker-env-dev  # Replace with your Elastic Beanstalk environment name
+          REPOSITORY_URI=${{secrets.AWS_ECR_REPOSITORY}}
+          IMAGE_TAG=latest
+
+          # Create Dockerrun.aws.json file
+          echo '{
+            "AWSEBDockerrunVersion": "1",
+            "Image": {
+              "Name": "'$REPOSITORY_URI':'$IMAGE_TAG'",
+              "Update": "true"
+            },
+            "Ports": [
+              {
+                "ContainerPort": "80"
+              }
+            ]
+          }' > Dockerrun.aws.json
+
+          # Deploy to Elastic Beanstalk
+          eb init $EB_APP_NAME --region ap-northeast-2
+          eb use $EB_ENV_NAME
+          eb deploy
